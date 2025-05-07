@@ -1,5 +1,77 @@
 import type { FileNode, FormatOptions } from '../types';
 
+// Function to determine language from file extension
+const getLanguageFromFilename = (filename: string): string => {
+  const extension = filename.split('.').pop()?.toLowerCase() || '';
+  
+  // Map common extensions to their language identifiers
+  switch (extension) {
+    case 'js':
+      return 'javascript';
+    case 'jsx':
+      return 'jsx';
+    case 'ts':
+      return 'typescript';
+    case 'tsx':
+      return 'tsx';
+    case 'py':
+      return 'python';
+    case 'rb':
+      return 'ruby';
+    case 'java':
+      return 'java';
+    case 'c':
+      return 'c';
+    case 'cpp':
+    case 'cc':
+    case 'cxx':
+      return 'cpp';
+    case 'cs':
+      return 'csharp';
+    case 'go':
+      return 'go';
+    case 'rs':
+      return 'rust';
+    case 'php':
+      return 'php';
+    case 'swift':
+      return 'swift';
+    case 'kt':
+    case 'kts':
+      return 'kotlin';
+    case 'scala':
+      return 'scala';
+    case 'sh':
+    case 'bash':
+      return 'bash';
+    case 'html':
+      return 'html';
+    case 'css':
+      return 'css';
+    case 'scss':
+    case 'sass':
+      return 'scss';
+    case 'json':
+      return 'json';
+    case 'xml':
+      return 'xml';
+    case 'yaml':
+    case 'yml':
+      return 'yaml';
+    case 'md':
+      return 'markdown';
+    case 'sql':
+      return 'sql';
+    case 'graphql':
+    case 'gql':
+      return 'graphql';
+    case 'dockerfile':
+      return 'dockerfile';
+    default:
+      return ''; // Empty string for unknown extensions
+  }
+};
+
 // Create a proper directory tree structure from file paths
 const buildDirectoryTree = (files: FileNode[]): Record<string, any> => {
   const tree: Record<string, any> = {};
@@ -107,7 +179,8 @@ export const generatePrompt = (
     prompt += `[${file.path}]\n`;
     
     if (options.useBacticksForCode && file.content) {
-      prompt += '```\n';
+      const language = getLanguageFromFilename(file.path);
+      prompt += '```' + language + '\n';
       prompt += file.content;
       prompt += '\n```\n\n';
     } else if (file.content) {

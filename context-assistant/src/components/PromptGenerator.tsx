@@ -14,16 +14,63 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ selectedFiles }) => {
   
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
-  const handleGenerate = () => {
-    const prompt = generatePrompt(selectedFiles, options);
-    setGeneratedPrompt(prompt);
+  const handleGenerate = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // First, ensure all selected files have their content loaded
+      const filesToProcess = [...selectedFiles];
+      const loadContentPromises = filesToProcess.map(async (file) => {
+        // Skip if content already loaded or not a file
+        if (file.content || file.type !== 'file') return file;
+        
+        // Load the content if we have the file object
+        if (file.file) {
+          try {
+            const content = await readFileAsText(file.file);
+            return { ...file, content };
+          } catch (err) {
+            console.error(`Error loading content for ${file.path}:`, err);
+            return file; // Return the file without content if failed
+          }
+        }
+        return file;
+      });
+      
+      // Wait for all content to be loaded
+      const processedFiles = await Promise.all(loadContentPromises);
+      
+      // Generate the prompt with the processed files
+      const prompt = generatePrompt(processedFiles, options);
+      setGeneratedPrompt(prompt);
+    } catch (err) {
+      console.error('Error generating prompt:', err);
+      setError('Failed to generate prompt. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedPrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+  
+  // Helper function to read file content
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
   };
   
   return (
@@ -85,22 +132,36 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ selectedFiles }) => {
       
       <button
         onClick={handleGenerate}
-        disabled={selectedFiles.length === 0}
+        disabled={selectedFiles.length === 0 || loading}
         style={{
-          backgroundColor: selectedFiles.length === 0 ? '#9ca3af' : '#2563eb',
+          backgroundColor: selectedFiles.length === 0 || loading ? '#9ca3af' : '#2563eb',
           color: 'white',
           fontWeight: 'bold',
           padding: '0.5rem 1rem',
           borderRadius: '0.375rem',
           fontSize: '14px',
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-          cursor: selectedFiles.length === 0 ? 'not-allowed' : 'pointer',
+          cursor: selectedFiles.length === 0 || loading ? 'not-allowed' : 'pointer',
           border: 'none',
           marginBottom: '1rem',
         }}
       >
-        Generate Prompt
+        {loading ? 'Loading File Contents...' : 'Generate Prompt'}
       </button>
+      
+      {error && (
+        <div style={{
+          backgroundColor: '#fee2e2',
+          padding: '0.5rem 1rem',
+          borderRadius: '0.375rem',
+          border: '1px solid #ef4444',
+          color: '#b91c1c',
+          fontSize: '14px',
+          marginBottom: '1rem',
+        }}>
+          {error}
+        </div>
+      )}
       
       {generatedPrompt && (
         <>
